@@ -67,14 +67,41 @@ class DirectAppwriteService:
     def restore_session(self, session_data):
         """Restore user session from saved data"""
         try:
-            if isinstance(session_data, dict) and '$id' in session_data:
-                session_id = session_data['$id']
+            # Handle different session data formats
+            if isinstance(session_data, dict):
+                if 'session' in session_data and 'user' in session_data:
+                    # Full session data from session manager
+                    session_info = session_data['session']
+                    user_info = session_data['user']
+                    
+                    # Use session secret if available, otherwise use session ID
+                    session_token = session_info.get('secret', session_info.get('$id'))
+                    
+                    self.set_session(session_token)
+                    self.current_user = user_info  # Use cached user info
+                    
+                    # Verify session is still valid by trying to get user
+                    try:
+                        current_user = self.get_current_user()
+                        self.current_user = current_user
+                    except:
+                        # If we can't get current user, use cached user info
+                        print("DEBUG: Using cached user info due to session scope limitations")
+                    
+                    return True
+                    
+                elif '$id' in session_data:
+                    # Direct session object
+                    session_token = session_data.get('secret', session_data.get('$id'))
+                    self.set_session(session_token)
+                    self.current_user = self.get_current_user()
+                    return True
             else:
-                session_id = session_data
-            
-            self.set_session(session_id)
-            self.current_user = self.get_current_user()
-            return True
+                # String session ID
+                self.set_session(session_data)
+                self.current_user = self.get_current_user()
+                return True
+                
         except Exception as e:
             print(f"Session restoration failed: {e}")
             return False
@@ -160,7 +187,8 @@ class DirectAppwriteService:
                     'user_id': self.current_user['$id'],
                     'home_name': home_name,
                     'meter_name': meter_name,
-                    'meter_type': meter_type,
+                    'meter_type_fixed': meter_type,  # Appwrite expects meter_type_fixed
+                    'is_active_fixed': True,  # Appwrite expects is_active_fixed
                     'created_at': datetime.now().isoformat()
                 }
             )
@@ -180,7 +208,17 @@ class DirectAppwriteService:
                 collection_id=self.config['meters_collection_id'],
                 queries=[Query.equal('user_id', self.current_user['$id'])]
             )
-            return result.documents
+            
+            # Handle both object and dict responses
+            if hasattr(result, 'documents'):
+                return result.documents
+            elif isinstance(result, dict) and 'documents' in result:
+                return result['documents']
+            else:
+                # If result doesn't have documents, it might be an error response
+                print(f"DEBUG: Unexpected result type: {type(result)}, content: {result}")
+                return []
+                
         except Exception as e:
             raise Exception(f"Failed to get meters: {str(e)}")
     
@@ -269,9 +307,23 @@ class DirectAppwriteService:
                 collection_id=self.config['readings_collection_id'],
                 queries=queries
             )
-            return result.documents
+            
+            # Handle both object and dict responses
+            if hasattr(result, 'documents'):
+                return result.documents
+            elif isinstance(result, dict) and 'documents' in result:
+                return result['documents']
+            else:
+                # If result doesn't have documents, it might be an error response
+                print(f"DEBUG: Unexpected result type in get_readings: {type(result)}, content: {result}")
+                return []
+                
         except Exception as e:
             raise Exception(f"Failed to get readings: {str(e)}")
+    
+    def get_daily_readings(self, meter_id, start_date=None, end_date=None, limit=100):
+        """Get daily readings for a meter (alias for get_readings)"""
+        return self.get_readings(meter_id, start_date, end_date, limit)
     
     def update_reading(self, reading_id, **kwargs):
         """Update reading"""
@@ -325,18 +377,26 @@ class DirectAppwriteService:
                     Query.equal('home_name', home_name)
                 ]
             )
-            print(f"DEBUG: Found {len(existing_meters.documents)} existing meters")
+            # Handle both object and dict responses
+            documents = []
+            if hasattr(existing_meters, 'documents'):
+                documents = existing_meters.documents
+            elif isinstance(existing_meters, dict) and 'documents' in existing_meters:
+                documents = existing_meters['documents']
             
-            if existing_meters.documents:
+            print(f"DEBUG: Found {len(documents)} existing meters")
+            
+            if documents:
                 print(f"INFO: Meter '{meter_name}' already exists on server")
-                return existing_meters.documents[0]
+                return documents[0]
             
             # Create new meter with original ID if possible
             meter_data = {
                 'user_id': user_id,
                 'home_name': home_name,
                 'meter_name': meter_name,
-                'meter_type': meter_type,
+                'meter_type_fixed': meter_type,  # Appwrite expects meter_type_fixed
+                'is_active_fixed': True,  # Appwrite expects is_active_fixed
                 'created_at': created_at or datetime.now().isoformat()
             }
             
@@ -364,7 +424,7 @@ class DirectAppwriteService:
             print(f"ERROR: Failed to sync meter {meter_id}: {str(e)}")
             raise Exception(f"Failed to sync meter: {str(e)}")
     
-    def sync_reading(self, reading_id, meter_id, reading_value, reading_date, user_id, created_at=None):
+    def sync_reading(self, reading_id, meter_id, reading_value, reading_date, user_id, created_at=None, consumption_kwh=0.0):
         """Sync a reading with ID preservation"""
         try:
             print(f"DEBUG: Syncing reading - ID: {reading_id}, Meter: {meter_id}, Value: {reading_value}, User: {user_id}")
@@ -388,9 +448,16 @@ class DirectAppwriteService:
                 ]
             )
             
-            if existing_readings.documents:
+            # Handle both dict and object responses
+            documents = []
+            if hasattr(existing_readings, 'documents'):
+                documents = existing_readings.documents
+            elif isinstance(existing_readings, dict) and 'documents' in existing_readings:
+                documents = existing_readings['documents']
+            
+            if documents:
                 print(f"INFO: Reading for meter {meter_id} on {date_str} already exists on server")
-                return existing_readings.documents[0]
+                return documents[0]
             
             # Create new reading with original ID if possible
             reading_data = {
@@ -398,8 +465,7 @@ class DirectAppwriteService:
                 'meter_id': meter_id,
                 'reading_value': float(reading_value),
                 'reading_date': date_str,
-                'reading_time': '12:00:00',
-                'consumption_kwh': 0.0,
+                'consumption_fixed': float(consumption_kwh),  # Use actual consumption value
                 'created_at': created_at or datetime.now().isoformat()
             }
             

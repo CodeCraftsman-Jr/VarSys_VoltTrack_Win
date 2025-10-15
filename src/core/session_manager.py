@@ -81,3 +81,14 @@ class SessionManager:
         """Check if current session is valid"""
         user, session = self.load_session()
         return user is not None
+    
+    def get_session(self):
+        """Get current session data"""
+        user, session = self.load_session()
+        if user:
+            return {
+                'user': user,
+                'session': session,
+                'session_id': session.get('$id') if session else None
+            }
+        return None

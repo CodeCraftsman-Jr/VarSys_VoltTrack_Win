@@ -183,7 +183,7 @@ class LocalDatabase:
         cursor = conn.cursor()
         
         query = '''
-            SELECT id, reading_value, previous_reading, consumption_kwh, reading_date, reading_time, created_at
+            SELECT id, user_id, meter_id, reading_value, previous_reading, consumption_kwh, reading_date, reading_time, created_at
             FROM readings WHERE meter_id = ?
         '''
         params = [meter_id]
@@ -204,13 +204,15 @@ class LocalDatabase:
         for row in cursor.fetchall():
             readings.append({
                 '$id': row[0],
-                'reading_value': row[1],
-                'previous_reading': row[2],
-                'consumption_fixed': row[3],  # This is kWh consumption
-                'consumption_kwh': row[3],    # Also map to consumption_kwh for consistency
-                'reading_date': row[4],
-                'reading_time': row[5] if len(row) > 6 else '12:00:00',  # Default time if not available
-                'created_at': row[6] if len(row) > 6 else row[5]
+                'user_id': row[1],    # Include user_id from the query
+                'meter_id': row[2],   # Include meter_id from the query
+                'reading_value': row[3],
+                'previous_reading': row[4],
+                'consumption_fixed': row[5],  # This is kWh consumption
+                'consumption_kwh': row[5],    # Also map to consumption_kwh for consistency
+                'reading_date': row[6],
+                'reading_time': row[7] if len(row) > 8 else '12:00:00',  # Default time if not available
+                'created_at': row[8] if len(row) > 8 else row[7]
             })
         
         conn.close()
