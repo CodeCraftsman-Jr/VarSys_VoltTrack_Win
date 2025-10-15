@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoltTrack - Smart Meter Reading Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Loading Screen -->
+        <div id="loading" class="loading-screen">
+            <div class="loading-spinner"></div>
+            <h2>Loading VoltTrack...</h2>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen hidden">
+            <div class="login-container">
+                <div class="login-header">
+                    <i class="fas fa-bolt"></i>
+                    <h1>VoltTrack</h1>
+                    <p>Smart Meter Reading Tracker</p>
+                </div>
+                
+                <form id="login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="remember-me" checked>
+                            <span>Remember me for 30 days</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Login</button>
+                    
+                    <div class="form-footer">
+                        <p>Don't have an account? <a href="#" id="register-link">Register</a></p>
+                    </div>
+                </form>
+                
+                <div id="error-message" class="error-message hidden"></div>
+            </div>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="main-screen" class="screen hidden">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-left">
+                    <i class="fas fa-bolt"></i>
+                    <h1>VoltTrack</h1>
+                </div>
+                <div class="header-right">
+                    <button id="sync-btn" class="btn-icon" title="Sync with Server">
+                        <i class="fas fa-sync"></i>
+                    </button>
+                    <button id="logout-btn" class="btn-icon" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Navigation -->
+            <nav class="app-nav">
+                <button class="nav-btn active" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </button>
+                <button class="nav-btn" data-tab="add-reading">
+                    <i class="fas fa-plus"></i>
+                    Add Reading
+                </button>
+                <button class="nav-btn" data-tab="meters">
+                    <i class="fas fa-cog"></i>
+                    Manage Meters
+                </button>
+                <button class="nav-btn" data-tab="history">
+                    <i class="fas fa-chart-line"></i>
+                    History & Analytics
+                </button>
+            </nav>
+
+            <!-- Content Area -->
+            <main class="app-content">
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="tab-content active">
+                    <div class="dashboard-header">
+                        <h2>Dashboard</h2>
+                        <span id="last-updated">Last updated: --:--</span>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <i class="fas fa-home"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-meters">0</span>
+                                <span class="stat-label">Total Meters</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-chart-bar"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-readings">0</span>
+                                <span class="stat-label">Total Readings</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-bolt"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-consumption">0 kWh</span>
+                                <span class="stat-label">Total Consumption</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-calendar"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="month-consumption">0 kWh</span>
+                                <span class="stat-label">This Month</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="meters-grid" id="meters-grid">
+                        <!-- Meter cards will be populated by JavaScript -->
+                    </div>
+
+                    <div class="quick-actions">
+                        <h3>Quick Actions</h3>
+                        <div class="action-buttons">
+                            <button class="btn-action" data-action="add-reading">
+                                <i class="fas fa-plus"></i>
+                                Add Reading
+                            </button>
+                            <button class="btn-action" data-action="view-analytics">
+                                <i class="fas fa-chart-line"></i>
+                                View Analytics
+                            </button>
+                            <button class="btn-action" data-action="sync">
+                                <i class="fas fa-sync"></i>
+                                Sync to Server
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Reading Tab -->
+                <div id="add-reading-tab" class="tab-content">
+                    <h2>Add New Reading</h2>
+                    <form id="reading-form" class="reading-form">
+                        <div class="form-group">
+                            <label for="meter-select">Select Meter</label>
+                            <select id="meter-select" required>
+                                <option value="">Choose a meter...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="reading-value">Reading Value</label>
+                            <input type="number" id="reading-value" step="0.1" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="reading-date">Reading Date</label>
+                            <input type="date" id="reading-date" required>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary">Add Reading</button>
+                    </form>
+                </div>
+
+                <!-- Manage Meters Tab -->
+                <div id="meters-tab" class="tab-content">
+                    <div class="tab-header">
+                        <h2>Manage Meters</h2>
+                        <button id="add-meter-btn" class="btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add Meter
+                        </button>
+                    </div>
+                    
+                    <div id="meters-list" class="meters-list">
+                        <!-- Meters will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- History & Analytics Tab -->
+                <div id="history-tab" class="tab-content">
+                    <h2>History & Analytics</h2>
+                    <div class="analytics-content">
+                        <p>Analytics features coming soon...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Modal content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
