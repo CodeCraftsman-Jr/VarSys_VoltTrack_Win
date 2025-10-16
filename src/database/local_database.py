@@ -116,14 +116,26 @@ class LocalDatabase:
         previous_result = cursor.fetchone()
         current_reading = reading_data['reading_value']
         
-        if previous_result:
+        # Check if consumption is provided from server sync, otherwise calculate locally
+        if 'consumption_kwh' in reading_data and reading_data['consumption_kwh'] is not None:
+            # Use the consumption value from server (our previously calculated and uploaded data)
+            consumption_kwh = reading_data['consumption_kwh']
+            # Calculate previous reading for consistency
+            if consumption_kwh > 0:
+                previous_reading = current_reading - consumption_kwh
+            else:
+                previous_reading = current_reading
+            print(f"DEBUG: Using server consumption for {reading_data['reading_date']}: {consumption_kwh}")
+        elif previous_result:
             # Not the first reading - calculate consumption normally
             previous_reading = previous_result[0]
             consumption_kwh = max(0, current_reading - previous_reading)
+            print(f"DEBUG: Calculating consumption for {reading_data['reading_date']}: {current_reading} - {previous_reading} = {consumption_kwh}")
         else:
             # First reading - previous reading equals current reading (consumption = 0)
             previous_reading = current_reading
             consumption_kwh = 0
+            print(f"DEBUG: First reading for {reading_data['reading_date']}: {current_reading}, consumption = 0")
         
         cursor.execute('''
             INSERT INTO readings (id, user_id, meter_id, reading_value, previous_reading, 

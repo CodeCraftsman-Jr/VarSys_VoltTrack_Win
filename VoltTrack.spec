@@ -1,10 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('assets', 'assets'), ('src', 'src')]
+datas = [('assets', 'assets'), ('src', 'src'), ('.env', '.')]
 binaries = []
-hiddenimports = ['flet', 'appwrite', 'sqlite3', 'asyncio', 'threading', 'json', 'requests', 'time', 'random']
+hiddenimports = ['flet', 'appwrite', 'appwrite.client', 'appwrite.services', 'appwrite.services.account', 'appwrite.services.databases', 'appwrite.query', 'appwrite.id', 'appwrite.exception', 'sqlite3', 'asyncio', 'threading', 'json', 'requests', 'time', 'random', 'pathlib', 'datetime', 'os', 'sys']
 tmp_ret = collect_all('flet')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('appwrite')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 

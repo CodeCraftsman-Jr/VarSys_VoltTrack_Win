@@ -1876,7 +1876,7 @@ class VoltTrackApp:
         self.sync_details = []
         
         # Create progress components
-        self.progress_bar = ft.ProgressBar(width=400, value=0)
+        self.progress_bar = ft.ProgressBar(width=480, value=0)  # Fit within card width
         self.progress_text = ft.Text("Preparing to sync...", size=14, weight=ft.FontWeight.BOLD)
         self.operation_text = ft.Text("", size=12, color="#666666")
         
@@ -1938,7 +1938,7 @@ class VoltTrackApp:
                 height=100
             ),
             
-            # Details section with proper scrolling (expandable)
+            # Details section with proper scrolling (fixed height)
             ft.Container(
                 content=ft.Column([
                     ft.Text("Sync Details:", weight=ft.FontWeight.BOLD, size=14),
@@ -1949,23 +1949,24 @@ class VoltTrackApp:
                         border_radius=5,
                         padding=10,
                         bgcolor="#f8f9fa",
-                        height=200,  # Fixed height for scrolling
+                        height=250,  # Increased height for better visibility
                     )
                 ]),
-                expand=True
+                height=280  # Fixed height instead of expand
             ),
             
-            # Action buttons (fixed height)
+            # Action buttons (fixed height) - show only one at a time
             ft.Container(
                 content=ft.Row([
-                    self.cancel_button,
                     ft.Container(expand=True),
-                    self.close_button
-                ]),
+                    self.cancel_button,
+                    self.close_button,
+                    ft.Container(expand=True)
+                ], alignment=ft.MainAxisAlignment.CENTER),
                 padding=ft.padding.only(top=10),
                 height=50
             )
-        ], spacing=5, expand=True)
+        ], spacing=5)
         
         # Create the overlay content
         overlay_content = ft.Container(
@@ -1974,7 +1975,7 @@ class VoltTrackApp:
                     content=card_content,
                     padding=20,
                     width=550,
-                    height=400
+                    height=500  # Increased height to accommodate content
                 ),
                 elevation=8
             ),
@@ -2656,7 +2657,8 @@ class VoltTrackApp:
                                 'meter_id': reading['meter_id'],
                                 'reading_value': reading['reading_value'],
                                 'reading_date': reading['reading_date'],
-                                'created_at': reading['created_at']
+                                'created_at': reading['created_at'],
+                                'consumption_kwh': reading.get('consumption_fixed', 0.0)  # Include server consumption
                             }
                             self.local_db.add_reading(reading_data)
                             readings_downloaded += 1

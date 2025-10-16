@@ -16,12 +16,30 @@ def clean_build_dirs():
     for dir_name in dirs_to_clean:
         if os.path.exists(dir_name):
             print(f"🧹 Cleaning {dir_name}...")
-            shutil.rmtree(dir_name)
+            try:
+                shutil.rmtree(dir_name)
+            except PermissionError as e:
+                print(f"⚠️  Warning: Could not clean {dir_name} - {e}")
+                print(f"💡 Please close VoltTrack.exe if it's running and try again")
+                return False
     
     # Clean .spec files
     for spec_file in Path('.').glob('*.spec'):
         print(f"🧹 Removing {spec_file}...")
-        spec_file.unlink()
+        try:
+            spec_file.unlink()
+        except PermissionError as e:
+            print(f"⚠️  Warning: Could not remove {spec_file} - {e}")
+    
+    return True
+
+def clear_session_files():
+    """Clear any existing session files so executable starts fresh"""
+    session_file = Path.home() / '.volttrack_session.json'
+    if session_file.exists():
+        print(f"🧹 Clearing session file: {session_file}")
+        session_file.unlink()
+        print("✅ Session cleared - executable will require fresh login")
 
 def check_dependencies():
     """Check if required dependencies are installed"""
@@ -69,8 +87,16 @@ args = [
     '--icon=assets/icon.ico',           # Application icon (if exists)
     '--add-data=assets;assets',         # Include assets folder
     '--add-data=src;src',               # Include source code
+    '--add-data=.env;.',                # Include .env configuration
     '--hidden-import=flet',             # Ensure Flet is included
     '--hidden-import=appwrite',         # Ensure Appwrite is included
+    '--hidden-import=appwrite.client',  # Ensure Appwrite client is included
+    '--hidden-import=appwrite.services', # Ensure Appwrite services is included
+    '--hidden-import=appwrite.services.account', # Ensure Appwrite account service is included
+    '--hidden-import=appwrite.services.databases', # Ensure Appwrite databases service is included
+    '--hidden-import=appwrite.query',   # Ensure Appwrite query is included
+    '--hidden-import=appwrite.id',      # Ensure Appwrite ID is included
+    '--hidden-import=appwrite.exception', # Ensure Appwrite exceptions is included
     '--hidden-import=sqlite3',          # Ensure SQLite is included
     '--hidden-import=asyncio',          # Ensure asyncio is included
     '--hidden-import=threading',        # Ensure threading is included
@@ -78,13 +104,18 @@ args = [
     '--hidden-import=requests',         # Ensure requests is included
     '--hidden-import=time',             # Ensure time is included
     '--hidden-import=random',           # Ensure random is included
+    '--hidden-import=pathlib',          # Ensure pathlib is included
+    '--hidden-import=datetime',         # Ensure datetime is included
+    '--hidden-import=os',               # Ensure os is included
+    '--hidden-import=sys',              # Ensure sys is included
     '--collect-all=flet',               # Collect all Flet dependencies
+    '--collect-all=appwrite',           # Collect all Appwrite dependencies
     '--noconfirm',                      # Overwrite output directory
     '--clean',                          # Clean PyInstaller cache
     '--log-level=INFO',                 # Verbose logging
 ]
 
-# Add console option for debugging (comment out for release)
+# Add console option for debugging (uncomment for debugging)
 # args.append('--console')
 
 # Run PyInstaller
@@ -117,8 +148,16 @@ def build_executable():
         '--windowed',
         '--add-data=assets;assets' if os.path.exists('assets') else '',
         '--add-data=src;src',
+        '--add-data=.env;.' if os.path.exists('.env') else '',
         '--hidden-import=flet',
         '--hidden-import=appwrite',
+        '--hidden-import=appwrite.client',
+        '--hidden-import=appwrite.services',
+        '--hidden-import=appwrite.services.account',
+        '--hidden-import=appwrite.services.databases',
+        '--hidden-import=appwrite.query',
+        '--hidden-import=appwrite.id',
+        '--hidden-import=appwrite.exception',
         '--hidden-import=sqlite3',
         '--hidden-import=asyncio',
         '--hidden-import=threading',
@@ -126,7 +165,12 @@ def build_executable():
         '--hidden-import=requests',
         '--hidden-import=time',
         '--hidden-import=random',
+        '--hidden-import=pathlib',
+        '--hidden-import=datetime',
+        '--hidden-import=os',
+        '--hidden-import=sys',
         '--collect-all=flet',
+        '--collect-all=appwrite',
         '--noconfirm',
         '--clean',
         '--log-level=INFO',
@@ -179,21 +223,27 @@ def main():
     print("=" * 40)
     
     # Step 1: Clean previous builds
-    clean_build_dirs()
+    if not clean_build_dirs():
+        print("❌ Build failed - could not clean previous build files")
+        print("💡 Make sure VoltTrack.exe is not running and try again")
+        return False
     
-    # Step 2: Check dependencies
+    # Step 2: Clear session files for fresh start
+    clear_session_files()
+    
+    # Step 3: Check dependencies
     if not check_dependencies():
         print("❌ Please install missing dependencies first")
         return False
     
-    # Step 3: Create build script
+    # Step 4: Create build script
     create_build_script()
     
-    # Step 4: Build executable
+    # Step 5: Build executable
     if not build_executable():
         return False
     
-    # Step 5: Post-build tasks
+    # Step 6: Post-build tasks
     if not post_build_tasks():
         return False
     

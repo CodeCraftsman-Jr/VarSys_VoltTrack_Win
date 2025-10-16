@@ -2,12 +2,47 @@
 
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 class SessionManager:
     def __init__(self):
-        self.session_file = Path.home() / '.volttrack_session.json'
+        self.is_executable = self._is_running_as_executable()
+        self.session_file = self._get_session_file_path()
+    
+    def _is_running_as_executable(self):
+        """Check if running as PyInstaller executable"""
+        return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+    
+    def _get_session_file_path(self):
+        """Get appropriate session file path based on execution environment"""
+        if self.is_executable:
+            # For executable: try to store session file next to the .exe file
+            exe_dir = Path(sys.executable).parent
+            session_file = exe_dir / '.volttrack_session.json'
+            
+            # Test if we can write to the executable directory
+            try:
+                # Try to create a test file to check write permissions
+                test_file = exe_dir / '.volttrack_test'
+                test_file.touch()
+                test_file.unlink()
+                print(f"DEBUG: Executable mode - session file: {session_file}")
+                return session_file
+            except (PermissionError, OSError):
+                # Fallback to user's AppData/Local directory if exe dir is not writable
+                appdata_dir = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
+                volttrack_dir = appdata_dir / 'VoltTrack'
+                volttrack_dir.mkdir(exist_ok=True)
+                session_file = volttrack_dir / '.volttrack_session.json'
+                print(f"DEBUG: Executable mode (fallback) - session file: {session_file}")
+                return session_file
+        else:
+            # For development: store in user home directory
+            session_file = Path.home() / '.volttrack_session.json'
+            print(f"DEBUG: Development mode - session file: {session_file}")
+            return session_file
     
     def save_session(self, user_data, session_data=None, remember_me=True):
         """Save user session to local file"""

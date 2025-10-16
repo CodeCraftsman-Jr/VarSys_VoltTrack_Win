@@ -340,15 +340,20 @@ class SyncManager:
         conn.close()
         
         if not exists:
-            # Add new reading
+            # Add new reading with consumption data
+            consumption_from_server = reading_data.get('consumption_fixed', 0.0)
+            print(f"DEBUG SYNC: Reading {reading_data['reading_date']}, server consumption_fixed: {consumption_from_server}")
+            print(f"DEBUG SYNC: Available fields in reading_data: {list(reading_data.keys())}")
+            
             self.local_db.add_reading({
                 'id': reading_data['$id'],
                 'user_id': reading_data['user_id'],
                 'meter_id': reading_data['meter_id'],
                 'reading_value': reading_data['reading_value'],
                 'reading_date': reading_data['reading_date'],
-                'reading_time': '12:00:00',
-                'created_at': reading_data.get('created_at', datetime.now().isoformat())
+                'reading_time': reading_data.get('reading_time', '12:00:00'),
+                'created_at': reading_data.get('created_at', datetime.now().isoformat()),
+                'consumption_kwh': consumption_from_server  # Use server consumption data
             })
     
     def get_sync_summary(self, comparison: Dict) -> str:
